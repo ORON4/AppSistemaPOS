@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:AppSistemaPOS.ViewModels"
+             x:Class="AppSistemaPOS.Views.LoginView"
+             Title="Bienvenido">
+
+    <ContentPage.BindingContext>
+        <vm:LoginViewModel />
+    </ContentPage.BindingContext>
+
+    <ScrollView>
+        <VerticalStackLayout Spacing="25" Padding="30" VerticalOptions="Center">
+
+            <Image Source="dotnet_bot.png"
+                   HeightRequest="150"
+                   HorizontalOptions="Center" />
+
+            <Label Text="Sistema POS"
+                   FontSize="32"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center" />
+
+            <Label Text="Inicia sesión para continuar"
+                   FontSize="16"
+                   TextColor="Gray"
+                   HorizontalOptions="Center" />
+
+            <VerticalStackLayout Spacing="15">
+                <Entry Placeholder="Correo Electrónico"
+                       Text="{Binding Email}"
+                       Keyboard="Email" />
+
+                <Entry Placeholder="Contraseña"
+                       Text="{Binding Password}"
+                       IsPassword="True" />
+
+                <Button Text="INGRESAR"
+                        Command="{Binding LoginCommand}"
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
+                        HeightRequest="50"
+                        CornerRadius="25"
+                        BackgroundColor="#2196F3" />
+
+                <ActivityIndicator IsRunning="{Binding IsBusy}" 
+                                   IsVisible="{Binding IsBusy}"
+                                   Color="#2196F3"/>
+            </VerticalStackLayout>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
