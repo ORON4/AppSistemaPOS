@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:AppSistemaPOS.ViewModels"
+             x:Class="AppSistemaPOS.Views.EntradaInventarioView"
+             Title="Nueva Entrada de Mercancía">
+
+    <ContentPage.BindingContext>
+        <vm:EntradaInventarioViewModel />
+    </ContentPage.BindingContext>
+
+    <Grid RowDefinitions="Auto, Auto, *, Auto" Padding="15" RowSpacing="10">
+
+        <!-- 1. Datos Generales -->
+        <Frame Grid.Row="0" Padding="10">
+            <VerticalStackLayout>
+                <Label Text="Datos de Recepción" FontAttributes="Bold"/>
+                <Editor Placeholder="Observaciones (Ej. Factura F-992)" 
+                        Text="{Binding Observaciones}"
+                        HeightRequest="60"/>
+            </VerticalStackLayout>
+        </Frame>
+
+        <!-- 2. Agregar Producto -->
+        <Frame Grid.Row="1" Padding="10" BackgroundColor="{StaticResource Gray100}">
+            <VerticalStackLayout Spacing="10">
+                <Label Text="Agregar Producto" FontAttributes="Bold"/>
+                <Grid ColumnDefinitions="2*, *" ColumnSpacing="10">
+                    <Entry Grid.Column="0" Placeholder="Código de Barras" Text="{Binding CodigoBarrasAgregar}"/>
+                    <Button Grid.Column="1" Text="Escanear" FontSize="10" Padding="0"/>
+                </Grid>
+                <Grid ColumnDefinitions="*, *">
+                    <Entry Grid.Column="0" Placeholder="Cantidad" Keyboard="Numeric" Text="{Binding CantidadAgregar}"/>
+                    <Entry Grid.Column="1" Placeholder="Costo Unitario" Keyboard="Numeric" Text="{Binding CostoUnitarioAgregar}"/>
+                </Grid>
+                <Button Text="Agregar a la Lista" Command="{Binding AgregarProductoAListaCommand}"/>
+            </VerticalStackLayout>
+        </Frame>
+
+        <!-- 3. Lista de Productos -->
+        <CollectionView Grid.Row="2" ItemsSource="{Binding ProductosEntrada}">
+            <CollectionView.Header>
+                <Label Text="Productos a Ingresar" FontAttributes="Bold" Margin="0,10,0,5"/>
+            </CollectionView.Header>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Grid ColumnDefinitions="*, Auto, Auto" Padding="5">
+                        <Label Grid.Column="0" Text="{Binding Codigo}" VerticalOptions="Center"/>
+                        <Label Grid.Column="1" Text="{Binding Cantidad, StringFormat='x {0}'}" Margin="10,0" VerticalOptions="Center"/>
+                        <Label Grid.Column="2" Text="{Binding Subtotal, StringFormat='${0:F2}'}" FontAttributes="Bold" VerticalOptions="Center"/>
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <!-- 4. Total y Guardar -->
+        <VerticalStackLayout Grid.Row="3" Spacing="10">
+            <BoxView HeightRequest="1" Color="Gray"/>
+            <Grid ColumnDefinitions="*,*">
+                <Label Text="Total Entrada:" FontSize="18" FontAttributes="Bold"/>
+                <Label Grid.Column="1" Text="{Binding TotalCosto, StringFormat='${0:F2}'}" FontSize="18" FontAttributes="Bold" HorizontalOptions="End"/>
+            </Grid>
+            <Button Text="REGISTRAR ENTRADA" 
+                    Command="{Binding GuardarEntradaCommand}" 
+                    BackgroundColor="{StaticResource Primary}" 
+                    HeightRequest="50"/>
+        </VerticalStackLayout>
+
+    </Grid>
+</ContentPage>

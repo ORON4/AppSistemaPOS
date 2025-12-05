@@ -4,11 +4,6 @@
              xmlns:vm="clr-namespace:AppSistemaPOS.ViewModels"
              x:Class="AppSistemaPOS.Views.LoginView"
              Title="Bienvenido">
-
-    <ContentPage.BindingContext>
-        <vm:LoginViewModel />
-    </ContentPage.BindingContext>
-
     <ScrollView>
         <VerticalStackLayout Spacing="25" Padding="30" VerticalOptions="Center">
 
@@ -27,6 +22,7 @@
                    HorizontalOptions="Center" />
 
             <VerticalStackLayout Spacing="15">
+         
                 <Entry Placeholder="Correo Electrónico"
                        Text="{Binding Email}"
                        Keyboard="Email" />

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:AppSistemaPOS.ViewModels"
+             x:Class="AppSistemaPOS.Views.VentasView"
+             Title="Punto de Venta">
+
+    <ContentPage.BindingContext>
+        <vm:VentasViewModel />
+    </ContentPage.BindingContext>
+
+    <Grid RowDefinitions="Auto, *, Auto" Padding="10">
+
+        <!-- Buscador -->
+        <SearchBar Grid.Row="0" Placeholder="Buscar producto o escanear..." />
+
+        <!-- Lista de productos en carrito -->
+        <CollectionView Grid.Row="1" ItemsSource="{Binding Carrito}" Margin="0,10">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Grid ColumnDefinitions="*, Auto, Auto" Padding="5">
+                        <VerticalStackLayout Grid.Column="0">
+                            <Label Text="{Binding NombreProducto}" FontAttributes="Bold"/>
+                            <Label Text="{Binding PrecioUnitario, StringFormat='${0:F2}'}" TextColor="Gray" FontSize="12"/>
+                        </VerticalStackLayout>
+
+                        <Label Grid.Column="1" Text="{Binding Cantidad, StringFormat='x {0}'}" VerticalOptions="Center" Margin="10,0"/>
+                        <Label Grid.Column="2" Text="{Binding Subtotal, StringFormat='${0:F2}'}" VerticalOptions="Center" FontAttributes="Bold"/>
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <!-- Totales y Botón Cobrar -->
+        <Frame Grid.Row="2" BackgroundColor="White" BorderColor="{StaticResource Primary}" HasShadow="True" Padding="15">
+            <VerticalStackLayout Spacing="10">
+                <Grid ColumnDefinitions="*,*">
+                    <Label Text="Total:" FontSize="20" FontAttributes="Bold"/>
+                    <Label Grid.Column="1" Text="{Binding Total, StringFormat='${0:F2}'}" FontSize="20" FontAttributes="Bold" HorizontalOptions="End" TextColor="{StaticResource Primary}"/>
+                </Grid>
+
+                <Button Text="COBRAR" 
+                        Command="{Binding CobrarCommand}"
+                        HeightRequest="50" 
+                        CornerRadius="25" 
+                        FontAttributes="Bold" 
+                        FontSize="18"/>
+            </VerticalStackLayout>
+        </Frame>
+
+    </Grid>
+</ContentPage>

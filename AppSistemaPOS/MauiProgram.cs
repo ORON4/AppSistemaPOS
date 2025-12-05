@@ -1,6 +1,7 @@
-﻿using Microsoft.Extensions.Logging;
-using AppSistemaPOS.Views;
+﻿using AppSistemaPOS.Services;
 using AppSistemaPOS.ViewModels;
+using AppSistemaPOS.Views;
+using Microsoft.Extensions.Logging;
 
 
 namespace AppSistemaPOS
@@ -18,8 +19,22 @@ namespace AppSistemaPOS
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
 
+            builder.Services.AddSingleton<ApiService>();
+            builder.Services.AddSingleton<AppShell>();
+
+            //vistas
             builder.Services.AddTransient<LoginView>();
+            builder.Services.AddTransient<DashboardView>();
+            builder.Services.AddTransient<EntradaInventarioView>();
+            builder.Services.AddTransient<InventarioView>();
+            builder.Services.AddTransient<VentasView>();
+
+            //viewmodels
             builder.Services.AddTransient<LoginViewModel>();
+            builder.Services.AddTransient<DashboardViewModel>();
+            builder.Services.AddTransient<EntradaInventarioViewModel>();
+            builder.Services.AddTransient<InventarioViewModel>();
+            builder.Services.AddTransient<VentasViewModel>();
 
 #if DEBUG
             builder.Logging.AddDebug();

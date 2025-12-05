@@ -1,12 +1,19 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using AppSistemaPOS.Models;
+using AppSistemaPOS.Services;
 
 namespace AppSistemaPOS.ViewModels
 {
     public partial class LoginViewModel : ObservableObject
     {
-        // Propiedades enlazadas a la vista (Entry de email y password)
+        private readonly ApiService _apiService;
+
+        public LoginViewModel(ApiService apiService)
+        {
+            _apiService = apiService;
+        }
+
         [ObservableProperty]
         private string email;
 
@@ -14,16 +21,16 @@ namespace AppSistemaPOS.ViewModels
         private string password;
 
         [ObservableProperty]
-        private bool isBusy; // mostrar un indicador de carga
+        private bool isBusy;
 
         [RelayCommand]
         private async Task Login()
         {
-            if (IsBusy) return; // Evitar doble clic
+            if (IsBusy) return;
 
             if (string.IsNullOrWhiteSpace(Email) || string.IsNullOrWhiteSpace(Password))
             {
-                await Application.Current.MainPage.DisplayAlert("Error", "Ingrese correo y contraseña", "OK");
+                await ShowAlert("Error", "Ingrese correo y contraseña");
                 return;
             }
 
@@ -31,26 +38,40 @@ namespace AppSistemaPOS.ViewModels
 
             try
             {
-                // AQUÍ LLAMAREMOS A LA API MÁS ADELANTE
-                // Simulamos una espera de 1 segundo por ahora
-                await Task.Delay(1000);
+                // La llamada a la API es asíncrona y puede correr en otro hilo
+                var usuario = await _apiService.LoginAsync(Email, Password);
 
-                // TODO: Validar credenciales reales con tu ApiService
-                // var usuario = await _apiService.Login(Email, Password);
-
-                // Si es exitoso, navegamos al Dashboard (lo crearemos después)
-                await Shell.Current.DisplayAlert("Éxito", $"Bienvenido {Email}", "Entrar");
-
-                // await Shell.Current.GoToAsync("//Dashboard"); 
+                if (usuario != null)
+                {
+                    await ShowAlert("¡Bienvenido!", $"Hola {usuario.Nombre}, acceso concedido.");
+                    // await Shell.Current.GoToAsync("//App");
+                }
+                else
+                {
+                    await ShowAlert("Acceso Denegado", "Correo o contraseña incorrectos.");
+                }
             }
             catch (Exception ex)
             {
-                await Application.Current.MainPage.DisplayAlert("Error", ex.Message, "OK");
+                // Aquí es donde probablemente estaba fallando el dibujo de la alerta
+                string mensaje = $"No se pudo conectar: {ex.Message}";
+                if (ex.InnerException != null) mensaje += $"\n{ex.InnerException.Message}";
+
+                await ShowAlert("Error Técnico", mensaje);
             }
             finally
             {
                 IsBusy = false;
             }
+        }
+
+        // --- MÉTODO AUXILIAR SEGURO PARA LA UI ---
+        private Task ShowAlert(string title, string message)
+        {
+            return MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                await Application.Current.MainPage.DisplayAlert(title, message, "OK");
+            });
         }
     }
 }
