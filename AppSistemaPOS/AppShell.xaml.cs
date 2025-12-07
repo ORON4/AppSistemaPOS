@@ -15,6 +15,8 @@ namespace AppSistemaPOS
             Routing.RegisterRoute(nameof(EntradaInventarioView), typeof(EntradaInventarioView));
             Routing.RegisterRoute(nameof(InventarioView), typeof(InventarioView));
             Routing.RegisterRoute(nameof(LoginView), typeof(LoginView));
+            Routing.RegisterRoute(nameof(ReportesView), typeof(ReportesView));
+            Routing.RegisterRoute(nameof(ReporteEntradasView), typeof(ReporteEntradasView));
             Routing.RegisterRoute(nameof(VentasView), typeof(VentasView));
         }
     }

@@ -5,10 +5,6 @@
              x:Class="AppSistemaPOS.Views.DashboardView"
              Title="Inicio">
 
-    <ContentPage.BindingContext>
-        <vm:DashboardViewModel />
-    </ContentPage.BindingContext>
-
     <ScrollView>
         <VerticalStackLayout Spacing="20" Padding="20">
 
@@ -38,6 +34,42 @@
 
             <!-- Acciones Rápidas -->
             <Label Text="Acciones Rápidas" FontAttributes="Bold" FontSize="18" Margin="0,10,0,0"/>
+            
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="15">
+                <!-- Botón para ir a Entrada de Inventario -->
+                <Button Grid.Column="0" 
+                        Text="Nueva venta" 
+                        Command="{Binding IrAVentasCommand}"
+                        BackgroundColor="{StaticResource Tertiary}"
+                        HeightRequest="60"/>
+
+                <Button Grid.Column="1" 
+                        Text="Reportes Venta" 
+                        Command="{Binding IrAReportesCommand}"
+                        BackgroundColor="{StaticResource Primary}"
+                        HeightRequest="60"/>
+            </Grid>
+
+            <Button Text="Reporte Entradas Inventario" 
+                    Command="{Binding IrAReporteEntradasCommand}"
+                    BackgroundColor="{StaticResource Secondary}"
+                    TextColor="{StaticResource PrimaryDarkText}"/>
+
+
+            <!-- Alertas de Stock -->
+            <Label Text="Alertas de Stock" FontAttributes="Bold" FontSize="18" Margin="0,10,0,0" TextColor="Red"/>
+            <CollectionView ItemsSource="{Binding Alertas}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Frame Margin="0,5" Padding="10" BackgroundColor="#FFEBEE" BorderColor="Red" HasShadow="False">
+                            <Label Text="{Binding .}" TextColor="Red" />
+                            
+                            
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
 
             <Grid ColumnDefinitions="*,*" ColumnSpacing="15">
                 <!-- Botón para ir a Entrada de Inventario -->
@@ -48,23 +80,12 @@
                         HeightRequest="60"/>
 
                 <Button Grid.Column="1" 
-                        Text="Ver Reportes" 
+                        Text="Ver Inventario" 
                         BackgroundColor="{StaticResource Secondary}"
+                        Command="{Binding IrAInventarioCommand}"
                         TextColor="{StaticResource PrimaryDarkText}"
                         HeightRequest="60"/>
             </Grid>
-
-            <!-- Alertas de Stock -->
-            <Label Text="Alertas de Stock" FontAttributes="Bold" FontSize="18" Margin="0,10,0,0" TextColor="Red"/>
-            <CollectionView ItemsSource="{Binding Alertas}">
-                <CollectionView.ItemTemplate>
-                    <DataTemplate>
-                        <Frame Margin="0,5" Padding="10" BackgroundColor="#FFEBEE" BorderColor="Red" HasShadow="False">
-                            <Label Text="{Binding .}" TextColor="Red" />
-                        </Frame>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
 
         </VerticalStackLayout>
     </ScrollView>

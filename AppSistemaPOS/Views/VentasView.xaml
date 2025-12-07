@@ -5,17 +5,35 @@
              x:Class="AppSistemaPOS.Views.VentasView"
              Title="Punto de Venta">
 
-    <ContentPage.BindingContext>
-        <vm:VentasViewModel />
-    </ContentPage.BindingContext>
 
-    <Grid RowDefinitions="Auto, *, Auto" Padding="10">
+    <Grid RowDefinitions="Auto, Auto, *, Auto" Padding="10">
 
         <!-- Buscador -->
         <SearchBar Grid.Row="0" Placeholder="Buscar producto o escanear..." />
 
+        <!-- Productos Disponibles -->
+        <CollectionView Grid.Row="1" ItemsSource="{Binding ProductosDisponibles}" HeightRequest="120" Margin="0,5">
+            <CollectionView.ItemsLayout>
+                <LinearItemsLayout Orientation="Horizontal" ItemSpacing="10"/>
+            </CollectionView.ItemsLayout>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Frame Padding="10" WidthRequest="120" BackgroundColor="#E3F2FD" BorderColor="#2196F3">
+                        <Frame.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:VentasViewModel}}, Path=AgregarProductoCommand}"
+                                                  CommandParameter="{Binding .}"/>
+                        </Frame.GestureRecognizers>
+                        <VerticalStackLayout VerticalOptions="Center">
+                            <Label Text="{Binding Nombre}" FontAttributes="Bold" LineBreakMode="TailTruncation" HorizontalOptions="Center"/>
+                            <Label Text="{Binding PrecioVenta, StringFormat='${0:F2}'}" TextColor="Green" HorizontalOptions="Center"/>
+                        </VerticalStackLayout>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
         <!-- Lista de productos en carrito -->
-        <CollectionView Grid.Row="1" ItemsSource="{Binding Carrito}" Margin="0,10">
+        <CollectionView Grid.Row="2" ItemsSource="{Binding Carrito}" Margin="0,10">
             <CollectionView.ItemTemplate>
                 <DataTemplate>
                     <Grid ColumnDefinitions="*, Auto, Auto" Padding="5">
@@ -32,7 +50,7 @@
         </CollectionView>
 
         <!-- Totales y Botón Cobrar -->
-        <Frame Grid.Row="2" BackgroundColor="White" BorderColor="{StaticResource Primary}" HasShadow="True" Padding="15">
+        <Frame Grid.Row="3" BackgroundColor="White" BorderColor="{StaticResource Primary}" HasShadow="True" Padding="15">
             <VerticalStackLayout Spacing="10">
                 <Grid ColumnDefinitions="*,*">
                     <Label Text="Total:" FontSize="20" FontAttributes="Bold"/>

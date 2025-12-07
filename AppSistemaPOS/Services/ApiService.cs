@@ -11,7 +11,9 @@ namespace AppSistemaPOS.Services
         private readonly HttpClient _httpClient;
         private string _token;
 
-        private const string BaseUrl = "http://192.168.1.71:5241/api/";
+        // private const string BaseUrl = "ttp://192.168.1.71:5241/api/";
+        private const string BaseUrl = "http://localhost:5241";
+
 
         public ApiService()
         {

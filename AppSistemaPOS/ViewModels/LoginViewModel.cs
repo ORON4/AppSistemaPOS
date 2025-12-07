@@ -38,13 +38,19 @@ namespace AppSistemaPOS.ViewModels
 
             try
             {
+                await Task.Delay(1000);
                 // La llamada a la API es asíncrona y puede correr en otro hilo
-                var usuario = await _apiService.LoginAsync(Email, Password);
+                // var usuario = await _apiService.LoginAsync(Email, Password);
+
+                var usuario = new Usuario
+                {
+                    Nombre = "Alberto",
+                };
 
                 if (usuario != null)
                 {
                     await ShowAlert("¡Bienvenido!", $"Hola {usuario.Nombre}, acceso concedido.");
-                    // await Shell.Current.GoToAsync("//App");
+                    await Shell.Current.GoToAsync("/DashboardView");
                 }
                 else
                 {
@@ -53,7 +59,6 @@ namespace AppSistemaPOS.ViewModels
             }
             catch (Exception ex)
             {
-                // Aquí es donde probablemente estaba fallando el dibujo de la alerta
                 string mensaje = $"No se pudo conectar: {ex.Message}";
                 if (ex.InnerException != null) mensaje += $"\n{ex.InnerException.Message}";
 

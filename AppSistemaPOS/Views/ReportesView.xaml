@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:AppSistemaPOS.ViewModels"
+             x:Class="AppSistemaPOS.Views.ReportesView"
+             Title="Reportes del Día">
+
+    <ScrollView>
+        <VerticalStackLayout Spacing="20" Padding="15">
+            
+            <!-- Resumen General -->
+            <Frame BackgroundColor="{StaticResource Primary}" Padding="15" CornerRadius="10">
+                <VerticalStackLayout>
+                    <Label Text="Venta Total del Día" TextColor="White" HorizontalOptions="Center"/>
+                    <Label Text="{Binding TotalVendido, StringFormat='${0:F2}'}" TextColor="White" FontSize="30" FontAttributes="Bold" HorizontalOptions="Center"/>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Desglose Metodo Pago -->
+            <Grid ColumnDefinitions="*, *" ColumnSpacing="10">
+                <Frame Grid.Column="0" BorderColor="Gray" Padding="10">
+                    <VerticalStackLayout>
+                        <Label Text="Efectivo" FontAttributes="Bold" HorizontalOptions="Center"/>
+                        <Label Text="{Binding VentasEfectivoCount, StringFormat='{0} ventas'}" FontSize="12" HorizontalOptions="Center"/>
+                        <Label Text="{Binding TotalEfectivo, StringFormat='${0:F2}'}" FontSize="18" TextColor="Green" HorizontalOptions="Center"/>
+                    </VerticalStackLayout>
+                </Frame>
+                <Frame Grid.Column="1" BorderColor="Gray" Padding="10">
+                    <VerticalStackLayout>
+                        <Label Text="Tarjeta" FontAttributes="Bold" HorizontalOptions="Center"/>
+                        <Label Text="{Binding VentasTarjetaCount, StringFormat='{0} ventas'}" FontSize="12" HorizontalOptions="Center"/>
+                        <Label Text="{Binding TotalTarjeta, StringFormat='${0:F2}'}" FontSize="18" TextColor="Blue" HorizontalOptions="Center"/>
+                    </VerticalStackLayout>
+                </Frame>
+            </Grid>
+
+            <!-- Productos Mas Vendidos -->
+            <Label Text="Productos Más Vendidos" FontSize="18" FontAttributes="Bold" Margin="0,10,0,0"/>
+            <CollectionView ItemsSource="{Binding ProductosMasVendidos}" HeightRequest="150">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid ColumnDefinitions="*, Auto" Padding="5">
+                            <Label Grid.Column="0" Text="{Binding Nombre}" FontAttributes="Bold"/>
+                            <Label Grid.Column="1" Text="{Binding CantidadVendida, StringFormat='{0} pzas'}" TextColor="Gray"/>
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <!-- Detalle Completo -->
+            <Label Text="Detalle de Productos Vendidos" FontSize="18" FontAttributes="Bold" Margin="0,10,0,0"/>
+            <Grid ColumnDefinitions="*, Auto, Auto, Auto" Padding="5" BackgroundColor="LightGray">
+                <Label Grid.Column="0" Text="Producto" FontAttributes="Bold" FontSize="12"/>
+                <Label Grid.Column="1" Text="Cant." FontAttributes="Bold" FontSize="12" Margin="5,0"/>
+                <Label Grid.Column="2" Text="P.U." FontAttributes="Bold" FontSize="12" Margin="5,0"/>
+                <Label Grid.Column="3" Text="Total" FontAttributes="Bold" FontSize="12"/>
+            </Grid>
+            <CollectionView ItemsSource="{Binding TodosProductosVendidos}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid ColumnDefinitions="*, Auto, Auto, Auto" Padding="5">
+                            <Label Grid.Column="0" Text="{Binding Nombre}" FontSize="14"/>
+                            <Label Grid.Column="1" Text="{Binding CantidadVendida}" HorizontalOptions="Center" WidthRequest="40" FontSize="14"/>
+                            <Label Grid.Column="2" Text="{Binding PrecioUnitario, StringFormat='${0:F0}'}" HorizontalOptions="End" WidthRequest="50" FontSize="14"/>
+                            <Label Grid.Column="3" Text="{Binding TotalVendido, StringFormat='${0:F2}'}" HorizontalOptions="End" WidthRequest="70" FontAttributes="Bold" FontSize="14"/>
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

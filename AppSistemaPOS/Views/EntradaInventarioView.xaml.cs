@@ -1,9 +1,12 @@
+using AppSistemaPOS.ViewModels;
+
 namespace AppSistemaPOS.Views;
 
 public partial class EntradaInventarioView : ContentPage
 {
-	public EntradaInventarioView()
+	public EntradaInventarioView(EntradaInventarioViewModel viewModel)
 	{
 		InitializeComponent();
+        BindingContext = viewModel;
 	}
 }

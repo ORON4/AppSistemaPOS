@@ -8,8 +8,7 @@ namespace AppSistemaPOS.Models
 {
     public class Producto
     {
-        public class Categoria
-        {
+
             public int ProductoId { get; set; }
             public string CodigoBarras { get; set; } = string.Empty;
             public string Nombre { get; set; } = string.Empty;
@@ -25,6 +24,5 @@ namespace AppSistemaPOS.Models
             public int StockMinimo { get; set; }
             public string? ImagenUrl { get; set; }
             public bool Activo { get; set; }
-        }
     }
 }

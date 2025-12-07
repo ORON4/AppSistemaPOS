@@ -1,17 +1,20 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
-using AppSistemaPOS.Models; // Asegúrate de tener un modelo DetalleEntrada o usar uno temporal
+using AppSistemaPOS.Models;
+using AppSistemaPOS.Services;
 
 namespace AppSistemaPOS.ViewModels
 {
     public partial class EntradaInventarioViewModel : ObservableObject
     {
+        private readonly InventarioService _inventarioService;
+
         [ObservableProperty]
         private string observaciones;
 
         // Lista de productos que van a entrar
-        public ObservableCollection<DetalleEntradaItem> ProductosEntrada { get; } = new();
+        public ObservableCollection<DetalleEntrada> ProductosEntrada { get; } = new();
 
         [ObservableProperty]
         private decimal totalCosto;
@@ -24,18 +27,24 @@ namespace AppSistemaPOS.ViewModels
         [ObservableProperty]
         private decimal costoUnitarioAgregar;
 
+        public EntradaInventarioViewModel(InventarioService inventarioService)
+        {
+            _inventarioService = inventarioService;
+        }
+
         [RelayCommand]
         private void AgregarProductoALista()
         {
             if (string.IsNullOrEmpty(CodigoBarrasAgregar) || CantidadAgregar <= 0 || CostoUnitarioAgregar <= 0)
                 return;
 
-            ProductosEntrada.Add(new DetalleEntradaItem
+            ProductosEntrada.Add(new DetalleEntrada
             {
-                Codigo = CodigoBarrasAgregar,
+                CodigoProducto = CodigoBarrasAgregar,
                 Cantidad = CantidadAgregar,
-                Costo = CostoUnitarioAgregar,
-                Subtotal = CantidadAgregar * CostoUnitarioAgregar
+                CostoUnitario = CostoUnitarioAgregar,
+                // NombreProducto opcional o buscarlo si ya existe
+                NombreProducto = _inventarioService.ObtenerProductoPorCodigo(CodigoBarrasAgregar)?.Nombre ?? "Nuevo"
             });
 
             TotalCosto += (CantidadAgregar * CostoUnitarioAgregar);
@@ -49,17 +58,23 @@ namespace AppSistemaPOS.ViewModels
         [RelayCommand]
         private async Task GuardarEntrada()
         {
-            await Application.Current.MainPage.DisplayAlert("Guardar", $"Se registrará una entrada por ${TotalCosto:F2}", "OK");
+            var nuevaEntrada = new EntradaInventario
+            {
+                Observaciones = Observaciones,
+                CostoTotal = TotalCosto,
+                Detalles = ProductosEntrada.ToList()
+            };
+
+            _inventarioService.RegistrarEntrada(nuevaEntrada);
+
+            await Application.Current.MainPage.DisplayAlert("Guardar", $"Se registró una entrada por ${TotalCosto:F2}", "OK");
+            
+            // Limpiar
+            ProductosEntrada.Clear();
+            TotalCosto = 0;
+            Observaciones = string.Empty;
+
             await Shell.Current.GoToAsync(".."); // Volver atrás
         }
-    }
-
-    // Clase auxiliar para la vista (si no tienes el modelo completo aún)
-    public class DetalleEntradaItem
-    {
-        public string Codigo { get; set; }
-        public int Cantidad { get; set; }
-        public decimal Costo { get; set; }
-        public decimal Subtotal { get; set; }
     }
 }

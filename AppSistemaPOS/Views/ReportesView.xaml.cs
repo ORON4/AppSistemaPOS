@@ -2,9 +2,9 @@ using AppSistemaPOS.ViewModels;
 
 namespace AppSistemaPOS.Views;
 
-public partial class DashboardView : ContentPage
+public partial class ReportesView : ContentPage
 {
-	public DashboardView(DashboardViewModel viewModel)
+	public ReportesView(ReportesViewModel viewModel)
 	{
 		InitializeComponent();
         BindingContext = viewModel;
@@ -13,9 +13,9 @@ public partial class DashboardView : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        if (BindingContext is DashboardViewModel vm)
+        if (BindingContext is ReportesViewModel vm)
         {
-            vm.ActualizarDatos();
+            vm.CargarReporte();
         }
     }
 }

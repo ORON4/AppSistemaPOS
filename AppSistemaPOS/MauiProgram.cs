@@ -20,6 +20,8 @@ namespace AppSistemaPOS
                 });
 
             builder.Services.AddSingleton<ApiService>();
+            builder.Services.AddSingleton<VentasService>();
+            builder.Services.AddSingleton<InventarioService>();
             builder.Services.AddSingleton<AppShell>();
 
             //vistas
@@ -28,6 +30,8 @@ namespace AppSistemaPOS
             builder.Services.AddTransient<EntradaInventarioView>();
             builder.Services.AddTransient<InventarioView>();
             builder.Services.AddTransient<VentasView>();
+            builder.Services.AddTransient<ReportesView>();
+            builder.Services.AddTransient<ReporteEntradasView>();
 
             //viewmodels
             builder.Services.AddTransient<LoginViewModel>();
@@ -35,6 +39,8 @@ namespace AppSistemaPOS
             builder.Services.AddTransient<EntradaInventarioViewModel>();
             builder.Services.AddTransient<InventarioViewModel>();
             builder.Services.AddTransient<VentasViewModel>();
+            builder.Services.AddTransient<ReportesViewModel>();
+            builder.Services.AddTransient<ReporteEntradasViewModel>();
 
 #if DEBUG
             builder.Logging.AddDebug();

@@ -6,7 +6,7 @@
              Title="Nueva Entrada de Mercancía">
 
     <ContentPage.BindingContext>
-        <vm:EntradaInventarioViewModel />
+        <!-- Removed manual ViewModel instantiation -->
     </ContentPage.BindingContext>
 
     <Grid RowDefinitions="Auto, Auto, *, Auto" Padding="15" RowSpacing="10">
@@ -45,7 +45,10 @@
             <CollectionView.ItemTemplate>
                 <DataTemplate>
                     <Grid ColumnDefinitions="*, Auto, Auto" Padding="5">
-                        <Label Grid.Column="0" Text="{Binding Codigo}" VerticalOptions="Center"/>
+                        <VerticalStackLayout Grid.Column="0" VerticalOptions="Center">
+                             <Label Text="{Binding NombreProducto}" FontAttributes="Bold"/>
+                             <Label Text="{Binding CodigoProducto}" FontSize="12" TextColor="Gray"/>
+                        </VerticalStackLayout>
                         <Label Grid.Column="1" Text="{Binding Cantidad, StringFormat='x {0}'}" Margin="10,0" VerticalOptions="Center"/>
                         <Label Grid.Column="2" Text="{Binding Subtotal, StringFormat='${0:F2}'}" FontAttributes="Bold" VerticalOptions="Center"/>
                     </Grid>

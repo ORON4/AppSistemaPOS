@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:AppSistemaPOS.ViewModels"
+             x:Class="AppSistemaPOS.Views.ReporteEntradasView"
+             Title="Reporte de Entradas">
+
+    <Grid RowDefinitions="Auto, *">
+        <!-- Resumen -->
+        <Frame Grid.Row="0" BackgroundColor="{StaticResource Primary}" Padding="15" Margin="10">
+            <VerticalStackLayout>
+                <Label Text="Inversión Total en Mercancía" TextColor="White" HorizontalOptions="Center"/>
+                <Label Text="{Binding TotalInversion, StringFormat='${0:F2}'}" TextColor="White" FontSize="24" FontAttributes="Bold" HorizontalOptions="Center"/>
+            </VerticalStackLayout>
+        </Frame>
+
+        <!-- Lista de Entradas -->
+        <CollectionView Grid.Row="1" ItemsSource="{Binding Entradas}" Margin="10">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Frame Margin="0,5" Padding="10" HasShadow="True">
+                        <VerticalStackLayout Spacing="5">
+                            <Grid ColumnDefinitions="*, Auto">
+                                <Label Grid.Column="0" Text="{Binding FechaEntrada, StringFormat='{0:g}'}" FontAttributes="Bold" TextColor="Gray"/>
+                                <Label Grid.Column="1" Text="{Binding CostoTotal, StringFormat='${0:F2}'}" FontAttributes="Bold" TextColor="Red"/>
+                            </Grid>
+                            
+                            <Label Text="{Binding Observaciones}" FontAttributes="Italic" FontSize="12"/>
+
+                            <BoxView HeightRequest="1" Color="LightGray" Margin="0,5"/>
+
+                            <!-- Detalles Mini -->
+                            <Label Text="Productos:" FontSize="10" TextColor="Gray"/>
+                            <BindableLayout.ItemsSource>
+                                <Binding Path="Detalles"/>
+                            </BindableLayout.ItemsSource>
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid ColumnDefinitions="*, Auto">
+                                        <Label Grid.Column="0" Text="{Binding NombreProducto}" FontSize="12"/>
+                                        <Label Grid.Column="1" Text="{Binding Cantidad, StringFormat='x{0}'}" FontSize="12"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>
