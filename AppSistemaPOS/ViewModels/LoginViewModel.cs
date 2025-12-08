@@ -38,18 +38,17 @@ namespace AppSistemaPOS.ViewModels
 
             try
             {
-                await Task.Delay(1000);
-                // La llamada a la API es asíncrona y puede correr en otro hilo
-                // var usuario = await _apiService.LoginAsync(Email, Password);
-
-                var usuario = new Usuario
-                {
-                    Nombre = "Alberto",
-                };
+                // CONEXIÓN REAL A LA API
+                var usuario = await _apiService.LoginAsync(Email, Password);
 
                 if (usuario != null)
                 {
-                    await ShowAlert("¡Bienvenido!", $"Hola {usuario.Nombre}, acceso concedido.");
+                    // Guardamos el usuario en una variable global o Preferences si es necesario
+                    // Preferences.Set("auth_token", usuario.Token); // Si tuvieras token
+
+                    await ShowAlert("¡Bienvenido!", $"Hola {usuario.Nombre}, sesión iniciada.");
+
+                    // Navegación absoluta para reiniciar la pila de navegación
                     await Shell.Current.GoToAsync("/DashboardView");
                 }
                 else
@@ -59,10 +58,8 @@ namespace AppSistemaPOS.ViewModels
             }
             catch (Exception ex)
             {
-                string mensaje = $"No se pudo conectar: {ex.Message}";
-                if (ex.InnerException != null) mensaje += $"\n{ex.InnerException.Message}";
-
-                await ShowAlert("Error Técnico", mensaje);
+                string mensaje = $"No se pudo conectar con el servidor.\nDetalle: {ex.Message}";
+                await ShowAlert("Error de Conexión", mensaje);
             }
             finally
             {
@@ -70,7 +67,6 @@ namespace AppSistemaPOS.ViewModels
             }
         }
 
-        // --- MÉTODO AUXILIAR SEGURO PARA LA UI ---
         private Task ShowAlert(string title, string message)
         {
             return MainThread.InvokeOnMainThreadAsync(async () =>
