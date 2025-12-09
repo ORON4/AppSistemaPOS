@@ -1,5 +1,7 @@
 ﻿using AppSistemaPOS.Models;
 using AppSistemaPOS.ViewModels;
+using System.Net;
+using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -190,6 +192,28 @@ namespace AppSistemaPOS.Services
             }
             catch { }
             return new List<MetodoPagoReporte>();
+        }
+
+        // Nuevo: wrapper genérico PostAsync que usa HttpClient internamente.
+        public async Task<HttpResponseMessage> PostAsync(string relativeUrl, object? body)
+        {
+            try
+            {
+                if (body == null)
+                {
+                    // Envío sin cuerpo
+                    return await _httpClient.PostAsync(relativeUrl, null);
+                }
+
+                // Si hay contenido, enviamos como JSON (PostAsJsonAsync viene de System.Net.Http.Json)
+                return await _httpClient.PostAsJsonAsync(relativeUrl, body);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[PostAsync] Error: {ex.Message}");
+                // Devolvemos un HttpResponseMessage con estado 503 para que el llamador pueda manejarlo sin lanzar
+                return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+            }
         }
     }
 

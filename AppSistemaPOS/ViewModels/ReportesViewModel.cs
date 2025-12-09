@@ -2,8 +2,7 @@ using AppSistemaPOS.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
-using System.Net.Http.Json;
-using System.Text.Json.Serialization;
+using System.Text.Json;
 
 
 namespace AppSistemaPOS.ViewModels
@@ -13,7 +12,10 @@ namespace AppSistemaPOS.ViewModels
         private readonly ApiService _apiService;
 
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsNotBusy))]
         private bool isBusy;
+
+        public bool IsNotBusy => !IsBusy;
 
         [ObservableProperty]
         private int ventasEfectivoCount;
@@ -39,27 +41,30 @@ namespace AppSistemaPOS.ViewModels
         public ReportesViewModel(ApiService apiService)
         {
             _apiService = apiService;
-
             Task.Run(async () => await CargarReporte());
         }
+
         public async Task CargarReporte()
         {
+            if (IsBusy) return;
+
             try
             {
-                // 1. Obtener Resumen por Método de Pago desde la API
-                var metodos = await _apiService.ObtenerMetodosPagoAsync();
+                IsBusy = true;
 
-                // 2. Obtener Top Productos desde la API
+                var metodos = await _apiService.ObtenerMetodosPagoAsync();
                 var masVendidosDto = await _apiService.ObtenerMasVendidosAsync();
 
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    // Limpiar valores anteriores
+                    // Limpiar datos previos
                     ProductosMasVendidos.Clear();
+                    TodosProductosVendidos.Clear();
                     TotalEfectivo = 0;
                     TotalTarjeta = 0;
                     VentasEfectivoCount = 0;
                     VentasTarjetaCount = 0;
+                    TotalVendido = 0;
 
                     // Procesar Métodos de Pago
                     if (metodos != null)
@@ -80,7 +85,7 @@ namespace AppSistemaPOS.ViewModels
                         TotalVendido = TotalEfectivo + TotalTarjeta;
                     }
 
-
+                    // Procesar Productos
                     if (masVendidosDto != null)
                     {
                         foreach (var item in masVendidosDto)
@@ -99,11 +104,17 @@ namespace AppSistemaPOS.ViewModels
             {
                 Console.WriteLine($"Error cargando reportes: {ex.Message}");
             }
+            finally
+            {
+                IsBusy = false;
+            }
         }
 
         [RelayCommand]
         public async Task HacerCorte()
         {
+            if (IsBusy) return;
+
             bool confirmar = await Shell.Current.DisplayAlert(
                 "Confirmar Corte",
                 "¿Estás seguro de realizar el corte? Esto calculará el total y BORRARÁ las ventas del día de la base de datos.",
@@ -116,24 +127,37 @@ namespace AppSistemaPOS.ViewModels
             {
                 IsBusy = true;
 
-                // Suponiendo que tienes un servicio 'ApiService'
+                // Llamada a la API
                 var respuesta = await _apiService.PostAsync("api/ventas/CorteDelDia", null);
 
-                if (respuesta.IsSuccess)
+                if (respuesta.IsSuccessStatusCode)
                 {
-                    // Deserializar la respuesta para mostrar los datos
-                    var datos = JsonConvert.DeserializeObject<RespuestaCorte>(respuesta.Content);
+                    // 2. CORRECCIÓN: Usamos System.Text.Json en lugar de JsonConvert
+                    var jsonString = await respuesta.Content.ReadAsStringAsync();
+
+                    var opciones = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var datos = JsonSerializer.Deserialize<RespuestaCorte>(jsonString, opciones);
 
                     await Shell.Current.DisplayAlert("Corte Exitoso",
                         $"Se vendió un total de: ${datos.Total}\nEn {datos.Transacciones} ventas.\nLos registros han sido borrados.",
                         "OK");
 
-                    // Limpiar la lista local de ventas porque ya no existen en la BD
-                    ListaVentas.Clear();
+                    // 3. CORRECCIÓN: Limpiamos TUS listas (ListaVentas no existía)
+                    MainThread.BeginInvokeOnMainThread(() =>
+                    {
+                        ProductosMasVendidos.Clear();
+                        TodosProductosVendidos.Clear();
+                        TotalEfectivo = 0;
+                        TotalTarjeta = 0;
+                        TotalVendido = 0;
+                        VentasEfectivoCount = 0;
+                        VentasTarjetaCount = 0;
+                        ResumenCorte = $"Corte realizado: ${datos.Total}";
+                    });
                 }
                 else
                 {
-                    await Shell.Current.DisplayAlert("Error", "No se pudo realizar el corte.", "OK");
+                    await Shell.Current.DisplayAlert("Error", "No se pudo realizar el corte. Verifica la conexión.", "OK");
                 }
             }
             catch (Exception ex)
@@ -146,12 +170,20 @@ namespace AppSistemaPOS.ViewModels
             }
         }
 
-        // Clase para mostrar en la UI de la App
-        public class ProductoReporteUi
-        {
-            public string Nombre { get; set; } = string.Empty;
-            public int Cantidad { get; set; }
-            public decimal Total { get; set; }
-        }
+    }
+
+    
+    public class ProductoReporteUi
+    {
+        public string Nombre { get; set; } = string.Empty;
+        public int Cantidad { get; set; }
+        public decimal Total { get; set; }
+    }
+
+    public class RespuestaCorte
+    {
+        public string Mensaje { get; set; }
+        public decimal Total { get; set; }
+        public int Transacciones { get; set; }
     }
 }
