@@ -9,13 +9,9 @@ namespace AppSistemaPOS.ViewModels
 {
     public partial class VentasViewModel : ObservableObject
     {
-        private readonly VentasService _ventasService;
-        private readonly InventarioService _inventarioService;
+        private readonly ApiService _apiService;
 
-        // Lista de productos disponibles para seleccionar
         public ObservableCollection<Producto> ProductosDisponibles { get; } = new();
-
-        // Carrito de compras
         public ObservableCollection<DetalleVenta> Carrito { get; } = new();
 
         [ObservableProperty]
@@ -24,22 +20,26 @@ namespace AppSistemaPOS.ViewModels
 
         public decimal Total => Subtotal;
 
-        public VentasViewModel(VentasService ventasService, InventarioService inventarioService)
+        public VentasViewModel(ApiService apiService)
         {
-            _ventasService = ventasService;
-            _inventarioService = inventarioService;
-
-            CargarProductos();
+            _apiService = apiService;
+            // Cargar productos al iniciar
+            Task.Run(async () => await CargarProductos());
         }
 
-        public void CargarProductos()
+        public async Task CargarProductos()
         {
-            ProductosDisponibles.Clear();
-            var productos = _inventarioService.ObtenerProductos();
-            foreach (var p in productos)
+            var productos = await _apiService.ObtenerProductosAsync();
+
+            MainThread.BeginInvokeOnMainThread(() =>
             {
-                ProductosDisponibles.Add(p);
-            }
+                ProductosDisponibles.Clear();
+                // Solo mostramos productos activos y con stock
+                foreach (var p in productos.Where(x => x.Activo && x.StockActual > 0))
+                {
+                    ProductosDisponibles.Add(p);
+                }
+            });
         }
 
         [RelayCommand]
@@ -47,94 +47,78 @@ namespace AppSistemaPOS.ViewModels
         {
             if (producto == null) return;
 
-            var itemExistente = Carrito.FirstOrDefault(d => d.ProductoId == producto.ProductoId);
-            if (itemExistente != null)
+            // Verificar si ya está en el carrito
+            var item = Carrito.FirstOrDefault(d => d.ProductoId == producto.ProductoId);
+
+            // Validar stock local
+            int cantidadEnCarrito = item?.Cantidad ?? 0;
+            if (cantidadEnCarrito + 1 > producto.StockActual)
             {
-                itemExistente.Cantidad++;
-                // Notificar cambio en propiedad calculada Subtotal si es necesario, 
-                // pero como es propiedad simple en modelo, tal vez necesitemos forzar actualización UI
-                // O mejor, reemplazar el item o usar ObservableObject en DetalleVenta.
-                // Por simplicidad, recalculemos total del VM.
-                
-                // Hack para refrescar UI de la lista si el item no es Observable:
-                var index = Carrito.IndexOf(itemExistente);
-                Carrito[index] = new DetalleVenta 
-                { 
-                    ProductoId = itemExistente.ProductoId,
-                    NombreProducto = itemExistente.NombreProducto,
-                    Cantidad = itemExistente.Cantidad,
-                    PrecioUnitario = itemExistente.PrecioUnitario
+                Application.Current.MainPage.DisplayAlert("Stock Insuficiente", $"Solo quedan {producto.StockActual} de {producto.Nombre}", "OK");
+                return;
+            }
+
+            if (item != null)
+            {
+                item.Cantidad++;
+                // Hack para refrescar la lista visualmente (reemplazar el item)
+                var index = Carrito.IndexOf(item);
+                Carrito[index] = new DetalleVenta
+                {
+                    ProductoId = item.ProductoId,
+                    NombreProducto = item.NombreProducto,
+                    Cantidad = item.Cantidad,
+                    PrecioUnitario = item.PrecioUnitario
                 };
             }
             else
             {
-                Carrito.Add(new DetalleVenta 
-                { 
-                    ProductoId = producto.ProductoId, 
-                    NombreProducto = producto.Nombre, 
-                    Cantidad = 1, 
-                    PrecioUnitario = producto.PrecioVenta 
+                Carrito.Add(new DetalleVenta
+                {
+                    ProductoId = producto.ProductoId,
+                    NombreProducto = producto.Nombre,
+                    Cantidad = 1,
+                    PrecioUnitario = producto.PrecioVenta
                 });
             }
-
             RecalcularTotal();
         }
 
-        private void RecalcularTotal()
-        {
-            Subtotal = Carrito.Sum(x => x.Subtotal);
-        }
+        private void RecalcularTotal() => Subtotal = Carrito.Sum(x => x.Subtotal);
 
         [RelayCommand]
         private async Task Cobrar()
         {
-            if (Carrito.Count == 0)
-            {
-                await Application.Current.MainPage.DisplayAlert("Error", "El carrito está vacío.", "OK");
-                return;
-            }
+            if (Carrito.Count == 0) return;
 
-            // Preguntar método de pago
-            string metodoPago = await Application.Current.MainPage.DisplayActionSheet("Seleccione Método de Pago", "Cancelar", null, "Efectivo", "Tarjeta");
+            string metodoPago = await Application.Current.MainPage.DisplayActionSheet("Método de Pago", "Cancelar", null, "Efectivo", "Tarjeta");
             if (string.IsNullOrEmpty(metodoPago) || metodoPago == "Cancelar") return;
 
-            // Crear venta
             var venta = new Venta
             {
+                UsuarioId = App.UsuarioActual?.UsuarioId ?? 1, // Usa el usuario logueado
                 FechaVenta = DateTime.Now,
                 MetodoPago = metodoPago,
                 Subtotal = Subtotal,
+                Impuestos = 0, // Ajusta si manejas impuestos
                 Total = Total,
                 Detalles = Carrito.ToList(),
-                UsuarioId = 1, // Usuario simulado
-                Estado = "Pagada"
+                Estado = "Completada"
             };
 
-            // Guardar venta
-            _ventasService.RegistrarVenta(venta);
+            bool exito = await _apiService.RegistrarVentaAsync(venta);
 
-            // Generar Ticket
-            var sb = new StringBuilder();
-            sb.AppendLine("=== SistemaPOS ===");
-            sb.AppendLine($"Sucursal: SistemaPOS");
-            sb.AppendLine($"Cajero: Alberto"); // Nombre simulado
-            sb.AppendLine($"Fecha: {venta.FechaVenta}");
-            sb.AppendLine("--------------------------------");
-            foreach (var item in venta.Detalles)
+            if (exito)
             {
-                sb.AppendLine($"{item.NombreProducto}");
-                sb.AppendLine($"{item.Cantidad} x ${item.PrecioUnitario:F2} = ${item.Subtotal:F2}");
+                await Application.Current.MainPage.DisplayAlert("Venta Exitosa", $"Total: ${Total:F2}", "OK");
+                Carrito.Clear();
+                RecalcularTotal();
+                await CargarProductos(); // Recargar para actualizar los stocks en pantalla
             }
-            sb.AppendLine("--------------------------------");
-            sb.AppendLine($"TOTAL: ${venta.Total:F2}");
-            sb.AppendLine("--------------------------------");
-            sb.AppendLine("¡Gracias por su compra!");
-            sb.AppendLine("¡Vuelva pronto!");
-
-            await Application.Current.MainPage.DisplayAlert("Ticket de Compra", sb.ToString(), "OK");
-
-            Carrito.Clear();
-            RecalcularTotal();
+            else
+            {
+                await Application.Current.MainPage.DisplayAlert("Error", "No se pudo registrar la venta. Verifique conexión o stocks.", "OK");
+            }
         }
     }
 }

@@ -8,65 +8,58 @@ namespace AppSistemaPOS.ViewModels
 {
     public partial class InventarioViewModel : ObservableObject
     {
-        private readonly InventarioService _inventarioService;
-        private List<Producto> _allProductos = new();
+        private readonly ApiService _apiService;
+        private List<Producto> _todosLosProductos = new();
 
         public ObservableCollection<Producto> Productos { get; } = new();
-
         public ObservableCollection<string> Categorias { get; } = new();
 
         [ObservableProperty]
         private string? filtroCategoria;
 
-        public InventarioViewModel(InventarioService inventarioService)
+        public InventarioViewModel(ApiService apiService)
         {
-            _inventarioService = inventarioService;
-            CargarDatos();
+            _apiService = apiService;
+            // Cargar datos al iniciar
+            Task.Run(async () => await CargarDatos());
         }
 
-        private void CargarDatos()
+        public async Task CargarDatos()
         {
-            _allProductos = _inventarioService.ObtenerProductos();
+            var productos = await _apiService.ObtenerProductosAsync();
+            var categoriasApi = await _apiService.ObtenerCategoriasAsync();
 
-            // Cargar Categorias
-            Categorias.Clear();
-            Categorias.Add("Todos");
-            foreach (var cat in _allProductos.Select(p => p.CategoriaNombre).Distinct())
-            {
-                if (cat != null) Categorias.Add(cat);
-            }
+            _todosLosProductos = productos;
 
-            // Si el filtro actual no es válido, resetear a Todos
-            if (string.IsNullOrEmpty(FiltroCategoria) || !Categorias.Contains(FiltroCategoria))
+            MainThread.BeginInvokeOnMainThread(() =>
             {
+                Categorias.Clear();
+                Categorias.Add("Todos");
+                foreach (var cat in categoriasApi)
+                {
+                    Categorias.Add(cat.Nombre);
+                }
+
                 FiltroCategoria = "Todos";
-            }
-
-            Filtrar();
+                Filtrar();
+            });
         }
 
-        partial void OnFiltroCategoriaChanged(string? value)
-        {
-            Filtrar();
-        }
+        partial void OnFiltroCategoriaChanged(string? value) => Filtrar();
 
         private void Filtrar()
         {
-            // Recargar productos desde el servicio por si hubo cambios (stock, etc)
-            _allProductos = _inventarioService.ObtenerProductos();
-            
             Productos.Clear();
-            var query = _allProductos.AsEnumerable();
+            var query = _todosLosProductos.AsEnumerable();
 
             if (!string.IsNullOrEmpty(FiltroCategoria) && FiltroCategoria != "Todos")
             {
-                query = query.Where(p => p.CategoriaNombre == FiltroCategoria);
+                // Filtramos por el nombre de categoría que viene en el Producto (o buscamos por ID si tu API lo manda diferente)
+                // Asumimos que la API llena la propiedad de navegación o el nombre
+                query = query.Where(p => p.CategoriaNombre== FiltroCategoria); 
             }
 
-            foreach (var p in query)
-            {
-                Productos.Add(p);
-            }
+            foreach (var p in query) Productos.Add(p);
         }
 
         [RelayCommand]
@@ -74,29 +67,26 @@ namespace AppSistemaPOS.ViewModels
         {
             if (producto == null) return;
 
-            // Simple edición con Prompts (para no crear otra vista completa por ahora)
-            // Se podría mejorar con una vista de Edición
-            string nuevoNombre = await Application.Current.MainPage.DisplayPromptAsync("Editar Producto", "Nombre del producto:", initialValue: producto.Nombre);
-            if (nuevoNombre == null) return; // Cancelado
+            string nuevoNombre = await Application.Current.MainPage.DisplayPromptAsync("Editar", "Nuevo nombre:", initialValue: producto.Nombre);
+            if (string.IsNullOrEmpty(nuevoNombre)) return;
 
-            string nuevoPrecioStr = await Application.Current.MainPage.DisplayPromptAsync("Editar Producto", "Precio de venta:", initialValue: producto.PrecioVenta.ToString(), keyboard: Keyboard.Numeric);
-            if (nuevoPrecioStr == null) return;
-
-            if (decimal.TryParse(nuevoPrecioStr, out decimal nuevoPrecio))
+            string nuevoPrecio = await Application.Current.MainPage.DisplayPromptAsync("Editar", "Nuevo precio venta:", initialValue: producto.PrecioVenta.ToString(), keyboard: Keyboard.Numeric);
+            
+            if (decimal.TryParse(nuevoPrecio, out decimal precio))
             {
-                // Actualizar modelo
                 producto.Nombre = nuevoNombre;
-                producto.PrecioVenta = nuevoPrecio;
-                
-                // Actualizar en servicio
-                _inventarioService.ActualizarProducto(producto);
+                producto.PrecioVenta = precio;
 
-                // Refrescar lista
-                Filtrar();
-            }
-            else
-            {
-                await Application.Current.MainPage.DisplayAlert("Error", "Precio inválido", "OK");
+                bool exito = await _apiService.ActualizarProductoAsync(producto);
+                if (exito)
+                {
+                    await Application.Current.MainPage.DisplayAlert("Éxito", "Producto actualizado", "OK");
+                    await CargarDatos(); // Recargar para asegurar
+                }
+                else
+                {
+                    await Application.Current.MainPage.DisplayAlert("Error", "No se pudo actualizar en el servidor", "OK");
+                }
             }
         }
     }

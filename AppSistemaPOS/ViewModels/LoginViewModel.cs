@@ -27,7 +27,6 @@ namespace AppSistemaPOS.ViewModels
         private async Task Login()
         {
             if (IsBusy) return;
-
             if (string.IsNullOrWhiteSpace(Email) || string.IsNullOrWhiteSpace(Password))
             {
                 await ShowAlert("Error", "Ingrese correo y contraseña");
@@ -35,31 +34,27 @@ namespace AppSistemaPOS.ViewModels
             }
 
             IsBusy = true;
-
             try
             {
-                // CONEXIÓN REAL A LA API
                 var usuario = await _apiService.LoginAsync(Email, Password);
 
                 if (usuario != null)
                 {
-                    // Guardamos el usuario en una variable global o Preferences si es necesario
-                    // Preferences.Set("auth_token", usuario.Token); // Si tuvieras token
+                    // 1. GUARDAR USUARIO EN SESIÓN GLOBAL
+                    App.UsuarioActual = usuario;
 
-                    await ShowAlert("¡Bienvenido!", $"Hola {usuario.Nombre}, sesión iniciada.");
-
-                    // Navegación absoluta para reiniciar la pila de navegación
+                    // 2. NAVEGAR
+                    // Usamos // para resetear la navegación y que no pueda volver atrás al login
                     await Shell.Current.GoToAsync("/DashboardView");
                 }
                 else
                 {
-                    await ShowAlert("Acceso Denegado", "Correo o contraseña incorrectos.");
+                    await ShowAlert("Acceso Denegado", "Credenciales incorrectas.");
                 }
             }
             catch (Exception ex)
             {
-                string mensaje = $"No se pudo conectar con el servidor.\nDetalle: {ex.Message}";
-                await ShowAlert("Error de Conexión", mensaje);
+                await ShowAlert("Error de Conexión", $"No se pudo contactar a la API.\n{ex.Message}");
             }
             finally
             {
@@ -67,12 +62,7 @@ namespace AppSistemaPOS.ViewModels
             }
         }
 
-        private Task ShowAlert(string title, string message)
-        {
-            return MainThread.InvokeOnMainThreadAsync(async () =>
-            {
-                await Application.Current.MainPage.DisplayAlert(title, message, "OK");
-            });
-        }
+        private Task ShowAlert(string title, string message) =>
+            Application.Current.MainPage.DisplayAlert(title, message, "OK");
     }
 }

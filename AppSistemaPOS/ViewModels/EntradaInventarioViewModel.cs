@@ -4,52 +4,57 @@ using System.Collections.ObjectModel;
 using AppSistemaPOS.Models;
 using AppSistemaPOS.Services;
 
+
 namespace AppSistemaPOS.ViewModels
 {
     public partial class EntradaInventarioViewModel : ObservableObject
     {
-        private readonly InventarioService _inventarioService;
+        private readonly ApiService _apiService;
 
-        [ObservableProperty]
-        private string observaciones;
+        [ObservableProperty] private string observaciones;
+        [ObservableProperty] private decimal totalCosto;
+        [ObservableProperty] private string codigoBarrasAgregar;
+        [ObservableProperty] private int cantidadAgregar;
+        [ObservableProperty] private decimal costoUnitarioAgregar;
 
-        // Lista de productos que van a entrar
         public ObservableCollection<DetalleEntrada> ProductosEntrada { get; } = new();
 
-        [ObservableProperty]
-        private decimal totalCosto;
-
-        // Campos para agregar un producto individual a la lista
-        [ObservableProperty]
-        private string codigoBarrasAgregar;
-        [ObservableProperty]
-        private int cantidadAgregar;
-        [ObservableProperty]
-        private decimal costoUnitarioAgregar;
-
-        public EntradaInventarioViewModel(InventarioService inventarioService)
+        public EntradaInventarioViewModel(ApiService apiService)
         {
-            _inventarioService = inventarioService;
+            _apiService = apiService;
         }
 
         [RelayCommand]
-        private void AgregarProductoALista()
+        private async Task AgregarProductoALista()
         {
             if (string.IsNullOrEmpty(CodigoBarrasAgregar) || CantidadAgregar <= 0 || CostoUnitarioAgregar <= 0)
                 return;
 
+            // Verificar si el producto ya existe en la API para obtener su nombre
+            string nombre = "Producto Nuevo";
+            var prod = await _apiService.ObtenerProductoPorCodigoAsync(CodigoBarrasAgregar);
+
+            if (prod != null)
+            {
+                nombre = prod.Nombre;
+            }
+            else
+            {
+                // Si es nuevo, podríamos pedir el nombre al usuario
+                nombre = await Application.Current.MainPage.DisplayPromptAsync("Nuevo Producto", $"Ingrese nombre para {CodigoBarrasAgregar}:") ?? "Nuevo";
+            }
+
             ProductosEntrada.Add(new DetalleEntrada
             {
                 CodigoProducto = CodigoBarrasAgregar,
+                NombreProducto = nombre,
                 Cantidad = CantidadAgregar,
-                CostoUnitario = CostoUnitarioAgregar,
-                // NombreProducto opcional o buscarlo si ya existe
-                NombreProducto = _inventarioService.ObtenerProductoPorCodigo(CodigoBarrasAgregar)?.Nombre ?? "Nuevo"
+                CostoUnitario = CostoUnitarioAgregar
             });
 
             TotalCosto += (CantidadAgregar * CostoUnitarioAgregar);
 
-            // Limpiar campos
+            // Limpiar inputs
             CodigoBarrasAgregar = string.Empty;
             CantidadAgregar = 0;
             CostoUnitarioAgregar = 0;
@@ -58,23 +63,39 @@ namespace AppSistemaPOS.ViewModels
         [RelayCommand]
         private async Task GuardarEntrada()
         {
-            var nuevaEntrada = new EntradaInventario
+            if (ProductosEntrada.Count == 0) return;
+
+            // Mapear a la estructura DTO que espera la API
+            var entradaDto = new
             {
+                UsuarioId = App.UsuarioActual?.UsuarioId ?? 1,
                 Observaciones = Observaciones,
-                CostoTotal = TotalCosto,
-                Detalles = ProductosEntrada.ToList()
+                Productos = ProductosEntrada.Select(p => new
+                {
+                    CodigoBarras = p.CodigoProducto,
+                    Cantidad = p.Cantidad,
+                    CostoUnitario = p.CostoUnitario,
+                    Nombre = p.NombreProducto,
+                    PrecioVenta = p.CostoUnitario * 1.3m, // Margen por defecto para nuevos
+                    CategoriaId = 1, // Categoría default para nuevos
+                    Descripcion = "Ingreso App"
+                }).ToList()
             };
 
-            _inventarioService.RegistrarEntrada(nuevaEntrada);
+            bool exito = await _apiService.RegistrarEntradaAsync(entradaDto);
 
-            await Application.Current.MainPage.DisplayAlert("Guardar", $"Se registró una entrada por ${TotalCosto:F2}", "OK");
-            
-            // Limpiar
-            ProductosEntrada.Clear();
-            TotalCosto = 0;
-            Observaciones = string.Empty;
-
-            await Shell.Current.GoToAsync(".."); // Volver atrás
+            if (exito)
+            {
+                await Application.Current.MainPage.DisplayAlert("Éxito", "Entrada registrada", "OK");
+                ProductosEntrada.Clear();
+                TotalCosto = 0;
+                Observaciones = string.Empty;
+                await Shell.Current.GoToAsync("..");
+            }
+            else
+            {
+                await Application.Current.MainPage.DisplayAlert("Error", "No se pudo registrar la entrada", "OK");
+            }
         }
     }
 }

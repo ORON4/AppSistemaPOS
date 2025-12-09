@@ -7,10 +7,10 @@ namespace AppSistemaPOS.ViewModels
 {
     public partial class DashboardViewModel : ObservableObject
     {
-        private readonly VentasService _ventasService;
+        private readonly ApiService _apiService;
 
         [ObservableProperty]
-        private string nombreUsuario = "Alberto (Cajero)";
+        private string nombreUsuario;
 
         [ObservableProperty]
         private string fechaHoy = DateTime.Now.ToLongDateString();
@@ -21,57 +21,57 @@ namespace AppSistemaPOS.ViewModels
         [ObservableProperty]
         private int transaccionesHoy;
 
-        // Lista de alertas simuladas
-        public ObservableCollection<string> Alertas { get; } = new()
-        {
-            "[!] Coca Cola 600ml - Stock: 2 (Mín: 5)",
-            "[!] Sabritas Sal - Stock: 0 (Mín: 10)"
-        };
+        public ObservableCollection<string> Alertas { get; } = new();
 
-        public DashboardViewModel(VentasService ventasService)
+        public DashboardViewModel(ApiService apiService)
         {
-            _ventasService = ventasService;
-            ActualizarDatos();
+            _apiService = apiService;
+            NombreUsuario = App.UsuarioActual?.Nombre ?? "Usuario";
         }
 
-        public void ActualizarDatos()
+        public async void ActualizarDatos()
         {
-            var ventasDelDia = _ventasService.ObtenerVentasDelDia(DateTime.Now);
-            VentasHoy = ventasDelDia.Sum(v => v.Total);
-            TransaccionesHoy = ventasDelDia.Count;
-        }
+            if (App.UsuarioActual != null)
+                NombreUsuario = App.UsuarioActual.Nombre;
 
-        [RelayCommand]
-        private async Task IrAEntradaInventario()
-        {
-            // Navegamos a la nueva pantalla de entrada
-            await Shell.Current.GoToAsync(nameof(Views.EntradaInventarioView));
-        }
+            // 1. Cargar Resumen Ventas
+            var stats = await _apiService.ObtenerResumenHoyAsync();
+            if (stats != null)
+            {
+                VentasHoy = stats.TotalIngresos;
+                TransaccionesHoy = stats.CantidadVentas;
+            }
 
-        [RelayCommand]
-        private async Task IrAInventario()
-        {
-            // Navegamos a la nueva pantalla de inventario
-            await Shell.Current.GoToAsync(nameof(Views.InventarioView));
-        }
+            // 2. Cargar Alertas de Stock Bajo
+            var bajoStock = await _apiService.ObtenerStockBajoAsync();
+            Alertas.Clear();
 
-        [RelayCommand]
-        private async Task IrAVentas()
-        {
-            // Navegamos a la nueva pantalla de inventario
-            await Shell.Current.GoToAsync(nameof(Views.VentasView));
+            if (bajoStock.Count > 0)
+            {
+                foreach (var p in bajoStock)
+                {
+                    Alertas.Add($"[URGENTE] {p.Nombre} - Quedan: {p.StockActual} (Mínimo: {p.StockMinimo})");
+                }
+            }
+            else
+            {
+                Alertas.Add("No hay alertas de stock.");
+            }
         }
 
         [RelayCommand]
-        private async Task IrAReportes()
-        {
-            await Shell.Current.GoToAsync(nameof(Views.ReportesView));
-        }
+        private async Task IrAEntradaInventario() => await Shell.Current.GoToAsync(nameof(Views.EntradaInventarioView));
 
         [RelayCommand]
-        private async Task IrAReporteEntradas()
-        {
-            await Shell.Current.GoToAsync(nameof(Views.ReporteEntradasView));
-        }
+        private async Task IrAInventario() => await Shell.Current.GoToAsync(nameof(Views.InventarioView));
+
+        [RelayCommand]
+        private async Task IrAVentas() => await Shell.Current.GoToAsync(nameof(Views.VentasView));
+
+        [RelayCommand]
+        private async Task IrAReportes() => await Shell.Current.GoToAsync(nameof(Views.ReportesView));
+
+        [RelayCommand]
+        private async Task IrAReporteEntradas() => await Shell.Current.GoToAsync(nameof(Views.ReporteEntradasView));
     }
 }
