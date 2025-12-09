@@ -1,13 +1,19 @@
-using CommunityToolkit.Mvvm.ComponentModel;
 using AppSistemaPOS.Services;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
-using AppSistemaPOS.Models;
+using System.Net.Http.Json;
+using System.Text.Json.Serialization;
+
 
 namespace AppSistemaPOS.ViewModels
 {
     public partial class ReportesViewModel : ObservableObject
     {
-        private readonly VentasService _ventasService;
+        private readonly ApiService _apiService;
+
+        [ObservableProperty]
+        private bool isBusy;
 
         [ObservableProperty]
         private int ventasEfectivoCount;
@@ -24,62 +30,128 @@ namespace AppSistemaPOS.ViewModels
         [ObservableProperty]
         private decimal totalVendido;
 
-        public ObservableCollection<ProductoReporte> ProductosMasVendidos { get; } = new();
-        public ObservableCollection<ProductoReporte> TodosProductosVendidos { get; } = new();
+        [ObservableProperty]
+        private string resumenCorte;
 
-        public ReportesViewModel(VentasService ventasService)
+        public ObservableCollection<ProductoReporteUi> ProductosMasVendidos { get; } = new();
+        public ObservableCollection<ProductoReporteUi> TodosProductosVendidos { get; } = new();
+
+        public ReportesViewModel(ApiService apiService)
         {
-            _ventasService = ventasService;
-            CargarReporte();
+            _apiService = apiService;
+
+            Task.Run(async () => await CargarReporte());
         }
-
-        public void CargarReporte()
+        public async Task CargarReporte()
         {
-            var ventas = _ventasService.ObtenerVentas();
+            try
+            {
+                // 1. Obtener Resumen por Método de Pago desde la API
+                var metodos = await _apiService.ObtenerMetodosPagoAsync();
 
-            // Resumen por método de pago
-            VentasEfectivoCount = ventas.Count(v => v.MetodoPago == "Efectivo");
-            VentasTarjetaCount = ventas.Count(v => v.MetodoPago == "Tarjeta");
+                // 2. Obtener Top Productos desde la API
+                var masVendidosDto = await _apiService.ObtenerMasVendidosAsync();
 
-            TotalEfectivo = ventas.Where(v => v.MetodoPago == "Efectivo").Sum(v => v.Total);
-            TotalTarjeta = ventas.Where(v => v.MetodoPago == "Tarjeta").Sum(v => v.Total);
-            TotalVendido = ventas.Sum(v => v.Total);
-
-            // Productos
-            var todosDetalles = ventas.SelectMany(v => v.Detalles);
-
-            var reporteProductos = todosDetalles
-                .GroupBy(d => d.NombreProducto)
-                .Select(g => new ProductoReporte
+                MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    Nombre = g.Key ?? "Desconocido",
-                    CantidadVendida = g.Sum(d => d.Cantidad),
-                    PrecioUnitario = g.First().PrecioUnitario, // Asumiendo precio constante por ahora
-                    TotalVendido = g.Sum(d => d.Subtotal)
-                })
-                .ToList();
+                    // Limpiar valores anteriores
+                    ProductosMasVendidos.Clear();
+                    TotalEfectivo = 0;
+                    TotalTarjeta = 0;
+                    VentasEfectivoCount = 0;
+                    VentasTarjetaCount = 0;
 
-            // Todos los productos
-            TodosProductosVendidos.Clear();
-            foreach (var item in reporteProductos)
-            {
-                TodosProductosVendidos.Add(item);
+                    // Procesar Métodos de Pago
+                    if (metodos != null)
+                    {
+                        foreach (var m in metodos)
+                        {
+                            if (m.Metodo == "Efectivo")
+                            {
+                                TotalEfectivo = m.Total;
+                                VentasEfectivoCount = m.Cantidad;
+                            }
+                            else if (m.Metodo == "Tarjeta")
+                            {
+                                TotalTarjeta = m.Total;
+                                VentasTarjetaCount = m.Cantidad;
+                            }
+                        }
+                        TotalVendido = TotalEfectivo + TotalTarjeta;
+                    }
+
+
+                    if (masVendidosDto != null)
+                    {
+                        foreach (var item in masVendidosDto)
+                        {
+                            ProductosMasVendidos.Add(new ProductoReporteUi
+                            {
+                                Nombre = item.Producto,
+                                Cantidad = item.CantidadTotal,
+                                Total = item.Ingresos
+                            });
+                        }
+                    }
+                });
             }
-
-            // Más vendidos (Top 5)
-            ProductosMasVendidos.Clear();
-            foreach (var item in reporteProductos.OrderByDescending(x => x.CantidadVendida).Take(5))
+            catch (Exception ex)
             {
-                ProductosMasVendidos.Add(item);
+                Console.WriteLine($"Error cargando reportes: {ex.Message}");
             }
         }
-    }
 
-    public class ProductoReporte
-    {
-        public string Nombre { get; set; } = string.Empty;
-        public int CantidadVendida { get; set; }
-        public decimal PrecioUnitario { get; set; }
-        public decimal TotalVendido { get; set; }
+        [RelayCommand]
+        public async Task HacerCorte()
+        {
+            bool confirmar = await Shell.Current.DisplayAlert(
+                "Confirmar Corte",
+                "¿Estás seguro de realizar el corte? Esto calculará el total y BORRARÁ las ventas del día de la base de datos.",
+                "Sí, hacer corte",
+                "Cancelar");
+
+            if (!confirmar) return;
+
+            try
+            {
+                IsBusy = true;
+
+                // Suponiendo que tienes un servicio 'ApiService'
+                var respuesta = await _apiService.PostAsync("api/ventas/CorteDelDia", null);
+
+                if (respuesta.IsSuccess)
+                {
+                    // Deserializar la respuesta para mostrar los datos
+                    var datos = JsonConvert.DeserializeObject<RespuestaCorte>(respuesta.Content);
+
+                    await Shell.Current.DisplayAlert("Corte Exitoso",
+                        $"Se vendió un total de: ${datos.Total}\nEn {datos.Transacciones} ventas.\nLos registros han sido borrados.",
+                        "OK");
+
+                    // Limpiar la lista local de ventas porque ya no existen en la BD
+                    ListaVentas.Clear();
+                }
+                else
+                {
+                    await Shell.Current.DisplayAlert("Error", "No se pudo realizar el corte.", "OK");
+                }
+            }
+            catch (Exception ex)
+            {
+                await Shell.Current.DisplayAlert("Error", $"Ocurrió un error: {ex.Message}", "OK");
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        // Clase para mostrar en la UI de la App
+        public class ProductoReporteUi
+        {
+            public string Nombre { get; set; } = string.Empty;
+            public int Cantidad { get; set; }
+            public decimal Total { get; set; }
+        }
     }
 }

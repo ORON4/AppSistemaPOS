@@ -2,6 +2,8 @@
 using AppSistemaPOS.ViewModels;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+
 
 namespace AppSistemaPOS.Services
 {
@@ -93,14 +95,26 @@ namespace AppSistemaPOS.Services
         }
 
         // ================= VENTAS =================
-        public async Task<bool> RegistrarVentaAsync(Venta venta)
+        public async Task<string> RegistrarVentaAsync(Venta venta) 
         {
             try
             {
                 var response = await _httpClient.PostAsJsonAsync("Ventas", venta);
-                return response.IsSuccessStatusCode;
+                if (response.IsSuccessStatusCode)
+                {
+                    return "OK";
+                }
+                else
+                {
+                    
+                    var errorMsg = await response.Content.ReadAsStringAsync();
+                    return errorMsg;
+                }
             }
-            catch { return false; }
+            catch (Exception ex)
+            {
+                return $"Error de conexión: {ex.Message}";
+            }
         }
 
         // ================= INVENTARIO =================
@@ -192,4 +206,19 @@ namespace AppSistemaPOS.Services
         public decimal Total { get; set; }
         public int Cantidad { get; set; }
     }
+
+    public class ProductoReporte
+    {
+        
+        [JsonPropertyName("producto")]
+        public string Producto { get; set; } = string.Empty;
+
+        [JsonPropertyName("cantidadTotal")]
+        public int CantidadTotal { get; set; }
+
+        [JsonPropertyName("ingresos")]
+        public decimal Ingresos { get; set; }
+    }
+
+
 }

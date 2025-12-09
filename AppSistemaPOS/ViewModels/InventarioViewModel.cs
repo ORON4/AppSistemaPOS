@@ -54,8 +54,7 @@ namespace AppSistemaPOS.ViewModels
 
             if (!string.IsNullOrEmpty(FiltroCategoria) && FiltroCategoria != "Todos")
             {
-                // Filtramos por el nombre de categoría que viene en el Producto (o buscamos por ID si tu API lo manda diferente)
-                // Asumimos que la API llena la propiedad de navegación o el nombre
+               
                 query = query.Where(p => p.CategoriaNombre== FiltroCategoria); 
             }
 
