@@ -67,28 +67,22 @@ namespace AppSistemaPOS.ViewModels
                     TotalVendido = 0;
 
                     // Procesar Métodos de Pago
-                    if (metodos != null)
-                    {
-                        foreach (var m in metodos)
-                        {
-                            if (m.Metodo == "Efectivo")
-                            {
-                                TotalEfectivo = m.Total;
-                                VentasEfectivoCount = m.Cantidad;
-                            }
-                            else if (m.Metodo == "Tarjeta")
-                            {
-                                TotalTarjeta = m.Total;
-                                VentasTarjetaCount = m.Cantidad;
-                            }
-                        }
-                        TotalVendido = TotalEfectivo + TotalTarjeta;
-                    }
-
-                    // Procesar Productos
                     if (masVendidosDto != null)
                     {
+                        // 1. Llenar la lista de ABAJO (Detalle Completo) con TODOS los productos
                         foreach (var item in masVendidosDto)
+                        {
+                            TodosProductosVendidos.Add(new ProductoReporteUi
+                            {
+                                Nombre = item.Producto,
+                                Cantidad = item.CantidadTotal,
+                                Total = item.Ingresos
+                            });
+                        }
+
+                        // 2. Llenar la lista de ARRIBA (Gráfica/Resumen) solo con los TOP 5
+                        // Usamos .Take(5) aquí en la app para no saturar la vista superior
+                        foreach (var item in masVendidosDto.Take(5))
                         {
                             ProductosMasVendidos.Add(new ProductoReporteUi
                             {
@@ -128,7 +122,7 @@ namespace AppSistemaPOS.ViewModels
                 IsBusy = true;
 
                 // Llamada a la API
-                var respuesta = await _apiService.PostAsync("api/ventas/CorteDelDia", null);
+                var respuesta = await _apiService.PostAsync("ventas/CorteDelDia", null);
 
                 if (respuesta.IsSuccessStatusCode)
                 {
@@ -155,9 +149,10 @@ namespace AppSistemaPOS.ViewModels
                         ResumenCorte = $"Corte realizado: ${datos.Total}";
                     });
                 }
+
                 else
                 {
-                    await Shell.Current.DisplayAlert("Error", "No se pudo realizar el corte. Verifica la conexión.", "OK");
+                    await Shell.Current.DisplayAlert("Error", "No se pudo realizar el corte", "OK");
                 }
             }
             catch (Exception ex)
@@ -177,6 +172,7 @@ namespace AppSistemaPOS.ViewModels
     {
         public string Nombre { get; set; } = string.Empty;
         public int Cantidad { get; set; }
+        public int PrecioVenta { get; set; }
         public decimal Total { get; set; }
     }
 

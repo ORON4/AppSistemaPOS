@@ -50,7 +50,7 @@ namespace AppSistemaPOS.ViewModels
             {
                 foreach (var p in bajoStock)
                 {
-                    Alertas.Add($"[URGENTE] {p.Nombre} - Quedan: {p.StockActual} (Mínimo: {p.StockMinimo})");
+                    Alertas.Add($"!! {p.Nombre} - Quedan: {p.StockActual} (Mínimo: {p.StockMinimo})");
                 }
             }
             else
