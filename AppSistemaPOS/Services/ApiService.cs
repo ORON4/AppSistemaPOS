@@ -14,7 +14,7 @@ namespace AppSistemaPOS.Services
         private readonly HttpClient _httpClient;
         private readonly JsonSerializerOptions _jsonOptions;
 
-        
+
         private const string BaseUrl = "http://192.168.1.67:5241/api/";
 
         public ApiService()
@@ -97,7 +97,7 @@ namespace AppSistemaPOS.Services
         }
 
         // ================= VENTAS =================
-        public async Task<string> RegistrarVentaAsync(Venta venta) 
+        public async Task<string> RegistrarVentaAsync(Venta venta)
         {
             try
             {
@@ -108,7 +108,7 @@ namespace AppSistemaPOS.Services
                 }
                 else
                 {
-                    
+
                     var errorMsg = await response.Content.ReadAsStringAsync();
                     return errorMsg;
                 }
@@ -215,6 +215,7 @@ namespace AppSistemaPOS.Services
                 return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
             }
         }
+ 
     }
 
     // DTOs Auxiliares para respuestas específicas de Reportes
