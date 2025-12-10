@@ -4,7 +4,6 @@ using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using System.Text.Json;
 
-
 namespace AppSistemaPOS.ViewModels
 {
     public partial class ReportesViewModel : ObservableObject
@@ -17,6 +16,7 @@ namespace AppSistemaPOS.ViewModels
 
         public bool IsNotBusy => !IsBusy;
 
+        
         [ObservableProperty]
         private int ventasEfectivoCount;
 
@@ -52,44 +52,59 @@ namespace AppSistemaPOS.ViewModels
             {
                 IsBusy = true;
 
+                // 1. Obtener datos de la API
                 var metodos = await _apiService.ObtenerMetodosPagoAsync();
                 var masVendidosDto = await _apiService.ObtenerMasVendidosAsync();
 
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    // Limpiar datos previos
-                    ProductosMasVendidos.Clear();
-                    TodosProductosVendidos.Clear();
-                    TotalEfectivo = 0;
-                    TotalTarjeta = 0;
-                    VentasEfectivoCount = 0;
-                    VentasTarjetaCount = 0;
-                    TotalVendido = 0;
+                    LimpiarDatos();
 
-                    // Procesar Métodos de Pago
+                    // 2. Procesar Métodos de Pago 
+                    if (metodos != null)
+                    {
+                        foreach (var m in metodos)
+                        {
+                            if (m.Metodo == "Efectivo")
+                            {
+                                TotalEfectivo = m.Total;
+                                VentasEfectivoCount = m.Cantidad;
+                            }
+                            else if (m.Metodo == "Tarjeta")
+                            {
+                                TotalTarjeta = m.Total;
+                                VentasTarjetaCount = m.Cantidad;
+                            }
+                        }
+                        TotalVendido = TotalEfectivo + TotalTarjeta;
+                    }
+
+                    // 3. Procesar Productos 
                     if (masVendidosDto != null)
                     {
-                        // 1. Llenar la lista de ABAJO (Detalle Completo) con TODOS los productos
                         foreach (var item in masVendidosDto)
                         {
-                            TodosProductosVendidos.Add(new ProductoReporteUi
+                            // Calculamos el precio unitario promedio (Total / Cantidad)
+                            decimal precioUnitarioCalc = item.CantidadTotal > 0
+                                ? item.Ingresos / item.CantidadTotal
+                                : 0;
+
+                            var productoUi = new ProductoReporteUi
                             {
                                 Nombre = item.Producto,
-                                Cantidad = item.CantidadTotal,
-                                Total = item.Ingresos
-                            });
+                                CantidadVendida = item.CantidadTotal, 
+                                TotalVendido = item.Ingresos,         
+                                PrecioUnitario = precioUnitarioCalc   
+                            };
+
+                           
+                            TodosProductosVendidos.Add(productoUi);
                         }
 
-                        // 2. Llenar la lista de ARRIBA (Gráfica/Resumen) solo con los TOP 5
-                        // Usamos .Take(5) aquí en la app para no saturar la vista superior
-                        foreach (var item in masVendidosDto.Take(5))
+                    
+                        foreach (var item in TodosProductosVendidos.Take(5))
                         {
-                            ProductosMasVendidos.Add(new ProductoReporteUi
-                            {
-                                Nombre = item.Producto,
-                                Cantidad = item.CantidadTotal,
-                                Total = item.Ingresos
-                            });
+                            ProductosMasVendidos.Add(item);
                         }
                     }
                 });
@@ -104,6 +119,17 @@ namespace AppSistemaPOS.ViewModels
             }
         }
 
+        private void LimpiarDatos()
+        {
+            ProductosMasVendidos.Clear();
+            TodosProductosVendidos.Clear();
+            TotalEfectivo = 0;
+            TotalTarjeta = 0;
+            VentasEfectivoCount = 0;
+            VentasTarjetaCount = 0;
+            TotalVendido = 0;
+        }
+
         [RelayCommand]
         public async Task HacerCorte()
         {
@@ -111,8 +137,8 @@ namespace AppSistemaPOS.ViewModels
 
             bool confirmar = await Shell.Current.DisplayAlert(
                 "Confirmar Corte",
-                "¿Estás seguro de realizar el corte? Esto calculará el total y BORRARÁ las ventas del día de la base de datos.",
-                "Sí, hacer corte",
+                "¿Estás seguro de realizar el corte? Se calculará el total y se BORRARÁN las ventas de hoy.",
+                "Sí, cerrar día",
                 "Cancelar");
 
             if (!confirmar) return;
@@ -120,39 +146,24 @@ namespace AppSistemaPOS.ViewModels
             try
             {
                 IsBusy = true;
-
-                // Llamada a la API
-                var respuesta = await _apiService.PostAsync("ventas/CorteDelDia", null);
+                
+                var respuesta = await _apiService.PostAsync("Ventas/CorteDelDia", null);
 
                 if (respuesta.IsSuccessStatusCode)
                 {
-                    // 2. CORRECCIÓN: Usamos System.Text.Json en lugar de JsonConvert
                     var jsonString = await respuesta.Content.ReadAsStringAsync();
-
                     var opciones = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
                     var datos = JsonSerializer.Deserialize<RespuestaCorte>(jsonString, opciones);
 
                     await Shell.Current.DisplayAlert("Corte Exitoso",
-                        $"Se vendió un total de: ${datos.Total}\nEn {datos.Transacciones} ventas.\nLos registros han sido borrados.",
+                        $"Total cerrado: ${datos.Total}\nTransacciones: {datos.Transacciones}",
                         "OK");
 
-                    // 3. CORRECCIÓN: Limpiamos TUS listas (ListaVentas no existía)
-                    MainThread.BeginInvokeOnMainThread(() =>
-                    {
-                        ProductosMasVendidos.Clear();
-                        TodosProductosVendidos.Clear();
-                        TotalEfectivo = 0;
-                        TotalTarjeta = 0;
-                        TotalVendido = 0;
-                        VentasEfectivoCount = 0;
-                        VentasTarjetaCount = 0;
-                        ResumenCorte = $"Corte realizado: ${datos.Total}";
-                    });
+                    MainThread.BeginInvokeOnMainThread(LimpiarDatos);
                 }
-
                 else
                 {
-                    await Shell.Current.DisplayAlert("Error", "No se pudo realizar el corte", "OK");
+                    await Shell.Current.DisplayAlert("Error", "No se pudo realizar el corte.", "OK");
                 }
             }
             catch (Exception ex)
@@ -164,16 +175,18 @@ namespace AppSistemaPOS.ViewModels
                 IsBusy = false;
             }
         }
-
     }
 
-    
+
     public class ProductoReporteUi
     {
         public string Nombre { get; set; } = string.Empty;
-        public int Cantidad { get; set; }
-        public int PrecioVenta { get; set; }
-        public decimal Total { get; set; }
+
+        public int CantidadVendida { get; set; }
+
+        public decimal PrecioUnitario { get; set; }
+
+        public decimal TotalVendido { get; set; }
     }
 
     public class RespuestaCorte
